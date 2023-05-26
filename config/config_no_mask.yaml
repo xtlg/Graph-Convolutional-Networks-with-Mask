@@ -1,0 +1,8 @@
+n_nodes: 39
+epochs: 2000
+n_hidden: 256
+n_features: 2
+batch_size: 4096
+mask: False
+learning_rate: 0.0001
+test_len: 1000
