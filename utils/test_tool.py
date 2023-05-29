@@ -219,11 +219,6 @@ def GCN_test_under_noise(model_file_path, data_path, test_file_path, adj_path, c
     test_set = dataset[:config['test_len'], : config['n_features'] * config['n_nodes']]
     test_scaler = MinMaxScaler()
     dataset = test_scaler.fit_transform(test_set)
-    # add noise
-    noise = np.random.normal(0, 0.1, (test_set.shape[0], test_set.shape[1]))
-    dataset = dataset + noise
-
-
 
     adj = util.get_adj(adj_path).cuda()
 
@@ -239,7 +234,12 @@ def GCN_test_under_noise(model_file_path, data_path, test_file_path, adj_path, c
         pos_set = util.load_data(pos_path)
         test_set = Dataset(dataset[:, ], pos_set[:config['test_len'], : config['n_features'] * config['n_nodes']],
                            config)
+
         x = torch.FloatTensor(test_set.features).cuda()
+        # add noise
+        noise = torch.normal(0, 0.1, (x.shape[0], x.shape[1])).cuda()
+        x = x + noise
+
         yr = torch.FloatTensor(test_set.targets).cuda()
         z = torch.FloatTensor(-1 * (test_set.pos - 1)).cuda()
         y = GCN_net(x, z, adj)
