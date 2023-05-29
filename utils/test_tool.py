@@ -207,3 +207,61 @@ def MLP_M_test(model_file_path, data_path, test_file_path, config_path,
         loss_list.append(loss.item())
     f_name = test_result_path + '/MLP_M_test_loss_set.csv'
     np.savetxt(f_name, np.array(loss_list))
+
+    
+def GCN_test_under_noise(model_file_path, data_path, test_file_path, adj_path, config_path,
+             test_result_path='./results/test/GCN'):
+    test_list = os.listdir(test_file_path)
+
+    config = util.load_config(config_path)
+    dataset = util.load_data(data_path)
+
+    test_set = dataset[:config['test_len'], : config['n_features'] * config['n_nodes']]
+    test_scaler = MinMaxScaler()
+    dataset = test_scaler.fit_transform(test_set)
+    # add noise
+    noise = np.random.normal(0, 0.1, (test_set.shape[0], test_set.shape[1]))
+    dataset = dataset + noise
+
+
+
+    adj = util.get_adj(adj_path).cuda()
+
+    GCN_net = GCN(config)
+    GCN_load = torch.load(model_file_path)
+    GCN_net.load_state_dict(GCN_load['state_dict'])
+    GCN_net.cuda()
+
+    criterion = nn.MSELoss()
+    loss_list = []
+    for i in test_list:
+        pos_path = test_file_path + '/' + i
+        pos_set = util.load_data(pos_path)
+        test_set = Dataset(dataset[:, ], pos_set[:config['test_len'], : config['n_features'] * config['n_nodes']],
+                           config)
+        x = torch.FloatTensor(test_set.features).cuda()
+        yr = torch.FloatTensor(test_set.targets).cuda()
+        z = torch.FloatTensor(-1 * (test_set.pos - 1)).cuda()
+        y = GCN_net(x, z, adj)
+        loss = criterion(y * z, yr * z)
+
+        test_y = y.cpu().detach().numpy()
+        true_y = yr.cpu().detach().numpy()
+        pos = z.cpu().detach().numpy()
+
+        # inversed_test_y = test_scaler.inverse_transform(test_y)
+        # inversed_true_y = test_scaler.inverse_transform(true_y)
+        #
+        # f_name1 = test_result_path + '/' + i[6] + i[-6:-4] + str(config['mask']) + '_err_y.csv'
+        # f_name2 = test_result_path + '/' + i[6] + i[-6:-4] + str(config['mask']) + '_pos.csv'
+        # f_name3 = test_result_path + '/inversed/' + i[6] + i[-6:-4] + str(config['mask']) + '_inversed_test_y.csv'
+        # f_name4 = test_result_path + '/inversed/' + i[6] + i[-6:-4] + str(config['mask']) + '_inversed_true_y.csv'
+        #
+        # np.savetxt(f_name1, test_y - true_y, delimiter=',')
+        # np.savetxt(f_name2, pos, delimiter=',')
+        # np.savetxt(f_name3, inversed_test_y, delimiter=',')
+        # np.savetxt(f_name4, inversed_true_y, delimiter=',')
+
+        loss_list.append(loss.item())
+    f_name = test_result_path + '/GCN_mask_' + str(config['mask']) + 'test_loss_set.csv'
+    np.savetxt(f_name, np.array(loss_list))
