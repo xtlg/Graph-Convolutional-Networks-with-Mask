@@ -1,0 +1,10 @@
+n_nodes: 39
+epoch: 2000
+n_hidden: 256
+n_features: 2
+batch_size: 512
+learning_rate: 0.001
+test_len: 1000
+LSTM_window: 100
+RNN_window: 12
+mech: False
